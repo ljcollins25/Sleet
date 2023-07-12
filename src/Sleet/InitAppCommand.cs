@@ -31,6 +31,8 @@ namespace Sleet
             var enableSymbolsOption = cmd.Option(Constants.EnableSymbolsFeedOption, Constants.EnableSymbolsFeedDesc, CommandOptionType.NoValue);
             var propertyOptions = cmd.Option(Constants.PropertyOption, Constants.PropertyDescription, CommandOptionType.MultipleValue);
 
+            var azureSas = cmd.CreateAzureSasOption();
+
             var required = new List<CommandOption>();
 
             cmd.OnExecute(async () =>
@@ -45,7 +47,7 @@ namespace Sleet
                 using (var cache = new LocalCache())
                 {
                     // Load settings and file system.
-                    var settings = LocalSettings.Load(optionConfigFile.Value(), SettingsUtility.GetPropertyMappings(propertyOptions.Values));
+                    var settings = azureSas.TryGetAzureSasSettings() ?? LocalSettings.Load(optionConfigFile.Value(), SettingsUtility.GetPropertyMappings(propertyOptions.Values));
                     var fileSystem = await Util.CreateFileSystemOrThrow(settings, sourceName.Value(), cache);
 
                     var success = await InitCommand.RunAsync(settings, fileSystem, enableCatalogOption.HasValue(), enableSymbolsOption.HasValue(), log, CancellationToken.None);

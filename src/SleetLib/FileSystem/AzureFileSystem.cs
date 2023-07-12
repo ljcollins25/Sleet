@@ -13,8 +13,6 @@ namespace Sleet
     {
         public static readonly string AzureEmptyConnectionString = "DefaultEndpointsProtocol=https;AccountName=;AccountKey=;BlobEndpoint=";
 
-        private readonly CloudStorageAccount _azureAccount;
-        private readonly CloudBlobClient _client;
         private readonly CloudBlobContainer _container;
 
         public AzureFileSystem(LocalCache cache, Uri root, CloudStorageAccount azureAccount, string container)
@@ -23,19 +21,22 @@ namespace Sleet
         }
 
         public AzureFileSystem(LocalCache cache, Uri root, Uri baseUri, CloudStorageAccount azureAccount, string container, string feedSubPath = null)
+            : this(cache, root, baseUri, azureAccount.CreateCloudBlobClient().GetContainerReference(container), feedSubPath)
+        {
+
+        }
+        public AzureFileSystem(LocalCache cache, Uri root, Uri baseUri, CloudBlobContainer container, string feedSubPath = null)
             : base(cache, root, baseUri, feedSubPath)
         {
-            _azureAccount = azureAccount;
-            _client = _azureAccount.CreateCloudBlobClient();
-            _container = _client.GetContainerReference(container);
+            _container = container;
 
-            var containerUri = UriUtility.EnsureTrailingSlash(_container.Uri);
+            var containerUri = UriUtility.EnsureTrailingSlash(_container.Uri.RemoveQuery());
             var expectedPath = UriUtility.EnsureTrailingSlash(root);
 
             // Verify that the provided path is sane.
-            if (!expectedPath.AbsoluteUri.StartsWith(expectedPath.AbsoluteUri, StringComparison.Ordinal))
+            if (!expectedPath.AbsoluteUri.StartsWith(containerUri.AbsoluteUri, StringComparison.Ordinal))
             {
-                throw new ArgumentException($"Invalid feed path. Azure container {container} resolved to {containerUri.AbsoluteUri} which does not match the provided URI of {expectedPath}  Update path in sleet.json or remove the path property to auto resolve the value.");
+                throw new ArgumentException($"Invalid feed path. Azure container {container.Name} resolved to {containerUri.AbsoluteUri} which does not match the provided URI of {expectedPath}  Update path in sleet.json or remove the path property to auto resolve the value.");
             }
 
             // Compute sub path, ignore the given sub path
@@ -68,8 +69,14 @@ namespace Sleet
 
         public override async Task<bool> Validate(ILogger log, CancellationToken token)
         {
-            log.LogInformation($"Verifying {_container.Uri.AbsoluteUri} exists.");
+            if (_container.ServiceClient.Credentials.IsSAS)
+            {
+                log.LogInformation($"Assuming {_container.Uri.AbsoluteUri} exists since sas was specified.");
+                return true;
+            }
 
+            log.LogInformation($"Verifying {_container.Uri.AbsoluteUri} exists.");
+            
             if (await _container.ExistsAsync())
             {
                 log.LogInformation($"Found {_container.Uri.AbsoluteUri}");
@@ -128,9 +135,9 @@ namespace Sleet
             return relativePath;
         }
 
-        public override Task<bool> HasBucket(ILogger log, CancellationToken token)
+        public override async Task<bool> HasBucket(ILogger log, CancellationToken token)
         {
-            return _container.ExistsAsync(token);
+            return _container.ServiceClient.Credentials.IsSAS || await _container.ExistsAsync(token);
         }
 
         public override async Task CreateBucket(ILogger log, CancellationToken token)

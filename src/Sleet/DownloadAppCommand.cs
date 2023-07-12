@@ -31,6 +31,8 @@ namespace Sleet
             var noLock = cmd.Option("--no-lock", "Skip locking the feed and verifying the client version.", CommandOptionType.NoValue);
             var ignoreErrors = cmd.Option("--ignore-errors", "Ignore download errors.", CommandOptionType.NoValue);
 
+            var azureSas = cmd.CreateAzureSasOption();
+
             var required = new List<CommandOption>()
             {
                 outputPath
@@ -48,7 +50,7 @@ namespace Sleet
                 using (var cache = new LocalCache())
                 {
                     // Load settings and file system.
-                    var settings = LocalSettings.Load(optionConfigFile.Value(), SettingsUtility.GetPropertyMappings(propertyOptions.Values));
+                    var settings = azureSas.TryGetAzureSasSettings() ?? LocalSettings.Load(optionConfigFile.Value(), SettingsUtility.GetPropertyMappings(propertyOptions.Values));
                     var fileSystem = await Util.CreateFileSystemOrThrow(settings, sourceName.Value(), cache);
 
                     // Download packages

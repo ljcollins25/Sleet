@@ -12,6 +12,13 @@
     <PackAsTool>true</PackAsTool>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(PackToolName)' != ''">
+    <ToolCommandName>$(PackToolName.ToLowerInvariant())</ToolCommandName>
+    <PackageId>$(PackToolName)</PackageId>
+    <IsTool>true</IsTool>
+    <PackAsTool>true</PackAsTool>
+  </PropertyGroup>
+
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <Description>Sleet is a static NuGet package feed generator.</Description>

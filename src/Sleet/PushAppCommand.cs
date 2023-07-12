@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using McMaster.Extensions.CommandLineUtils;
+using Newtonsoft.Json.Linq;
 using NuGet.Common;
 using NuGet.Packaging;
 
@@ -33,6 +34,8 @@ namespace Sleet
             var forceName = cmd.Option("-f|--force", "Overwrite existing packages.",
                             CommandOptionType.NoValue);
 
+            var azureSas = cmd.CreateAzureSasOption();
+
             var skipExisting = cmd.Option("--skip-existing", "Skip packages that already exist on the feed.", CommandOptionType.NoValue);
             var propertyOptions = cmd.Option(Constants.PropertyOption, Constants.PropertyDescription, CommandOptionType.MultipleValue);
 
@@ -57,7 +60,10 @@ namespace Sleet
                 using (var cache = new LocalCache(new PerfTracker()))
                 {
                     // Load settings and file system.
-                    var settings = LocalSettings.Load(optionConfigFile.Value(), SettingsUtility.GetPropertyMappings(propertyOptions.Values));
+
+
+                    var settings = azureSas.TryGetAzureSasSettings() ?? LocalSettings.Load(optionConfigFile.Value(), SettingsUtility.GetPropertyMappings(propertyOptions.Values));
+
                     var fileSystem = await Util.CreateFileSystemOrThrow(settings, sourceName.Value(), cache);
 
                     var success = await PushCommand.RunAsync(settings, fileSystem, argRoot.Values.ToList(), forceName.HasValue(), skipExisting.HasValue(), log);

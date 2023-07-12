@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
+using McMaster.Extensions.CommandLineUtils;
 using Newtonsoft.Json.Linq;
 using NuGet.Common;
 
@@ -18,6 +19,29 @@ namespace Sleet
             {
                 WebRequest.DefaultWebProxy.Credentials = CredentialCache.DefaultCredentials;
             }
+        }
+
+        internal static CommandOption CreateAzureSasOption(this CommandLineApplication cmd)
+        {
+            return cmd.Option("--azure-sas", "Sas url with write access to azure blob storage", CommandOptionType.SingleValue);
+        }
+
+        internal static LocalSettings TryGetAzureSasSettings(this CommandOption azureSas)
+        {
+            return azureSas.HasValue()
+                        ? LocalSettings.Load(new JObject()
+                        {
+                            ["sources"] = new JArray()
+                            {
+                                new JObject()
+                                {
+                                    ["name"] = "azure-sas-feed",
+                                    ["type"] = "azure-sas",
+                                    ["sasUrl"] = azureSas.Value(),
+                                }
+                            }
+                        })
+                        : null;
         }
 
         internal static async Task<ISleetFileSystem> CreateFileSystemOrThrow(LocalSettings settings, string sourceName, LocalCache cache)

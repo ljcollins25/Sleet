@@ -31,6 +31,8 @@ namespace Sleet
 
             var force = cmd.Option("-f|--force", "Ignore missing packages.", CommandOptionType.NoValue);
 
+            var azureSas = cmd.CreateAzureSasOption();
+
             var verbose = cmd.Option(Constants.VerboseOption, Constants.VerboseDesc, CommandOptionType.NoValue);
             var propertyOptions = cmd.Option(Constants.PropertyOption, Constants.PropertyDescription, CommandOptionType.MultipleValue);
 
@@ -53,7 +55,7 @@ namespace Sleet
                 using (var cache = new LocalCache(new PerfTracker()))
                 {
                     // Load settings and file system.
-                    var settings = LocalSettings.Load(optionConfigFile.Value(), SettingsUtility.GetPropertyMappings(propertyOptions.Values));
+                    var settings = azureSas.TryGetAzureSasSettings() ?? LocalSettings.Load(optionConfigFile.Value(), SettingsUtility.GetPropertyMappings(propertyOptions.Values));
                     var fileSystem = await Util.CreateFileSystemOrThrow(settings, sourceName.Value(), cache);
 
                     var success = await DeleteCommand.RunAsync(settings, fileSystem, packageId.Value(), version.Value(), reason.Value(), force.HasValue(), log);

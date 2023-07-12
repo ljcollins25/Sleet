@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -10,6 +11,7 @@ using Amazon.S3;
 using Amazon.SecurityToken;
 using Amazon.SecurityToken.Model;
 using Microsoft.Azure.Storage;
+using Microsoft.Azure.Storage.Blob;
 using Newtonsoft.Json.Linq;
 using NuGetUriUtility = NuGet.Common.UriUtility;
 
@@ -73,6 +75,23 @@ namespace Sleet
                         }
 
                         result = new PhysicalFileSystem(cache, pathUri, baseUri);
+                    }
+                    else if (type == "azure-sas")
+                    {
+                        var sasUrl = JsonUtility.GetValueCaseInsensitive(sourceEntry, "sasUrl");
+                        if (string.IsNullOrEmpty(sasUrl))
+                        {
+                            throw new ArgumentException("Missing sasUrl for azure account.");
+                        }
+
+                        var sasUri = new Uri(sasUrl);
+                        var containerUri = sasUri.TransformPath(s => s.SubstringBeforeIndexOf('/', startIndex: 1));
+
+                        pathUri = sasUri.RemoveQuery();
+                        result = new AzureFileSystem(cache,
+                            sasUri.RemoveQuery(),
+                            sasUri.RemoveQuery(),
+                            new CloudBlobContainer(containerUri));
                     }
                     else if (type == "azure")
                     {

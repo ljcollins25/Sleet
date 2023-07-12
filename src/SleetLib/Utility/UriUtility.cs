@@ -112,6 +112,35 @@ namespace Sleet
             return uri;
         }
 
+        public static string SubstringBeforeIndexOf(this string s, char c, int startIndex = 0)
+        {
+            var index = s.IndexOf(c, startIndex);
+            if (index > 0)
+            {
+                return s.Substring(0, index);
+            }
+
+            return s;
+        }
+
+        public static Uri TransformPath(this Uri uri, Func<string, string> transform, bool convertSlashes = true)
+        {
+            var ub = new UriBuilder(uri);
+            var newPath = transform(ub.Path);
+            if (convertSlashes)
+            {
+                newPath = newPath.Replace('\\', '/');
+            }
+
+            ub.Path = newPath;
+            return ub.Uri;
+        }
+
+        public static Uri RemoveQuery(this Uri uri)
+        {
+            return new UriBuilder(uri) { Query = null }.Uri;
+        }
+
         public static Uri EnsureTrailingSlash(Uri uri)
         {
             var s = uri.AbsoluteUri;
